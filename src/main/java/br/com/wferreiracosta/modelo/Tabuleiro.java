@@ -5,16 +5,19 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 @Setter
 @Getter
-public class Tabuleiro {
+public class Tabuleiro implements CampoObservador {
 
     private int linhas;
     private int colunas;
     private int minas;
+
     private final List<Campo> campos = new ArrayList<>();
+    private final List<Consumer<Boolean>> observadores = new ArrayList<>();
 
     public Tabuleiro(int linhas, int colunas, int minas){
         this.linhas = linhas;
@@ -26,17 +29,26 @@ public class Tabuleiro {
         this.sortearMinas();
     }
 
+    public void registrarObservador(Consumer<Boolean> observador){
+        this.observadores.add(observador);
+    }
+
+    public void notificarObservadores(boolean resultado){
+        this.observadores.stream()
+                .forEach(o -> o.accept(resultado));
+    }
+
     public void abrir(int linha, int coluna){
-        try {
-            campos.parallelStream()
-                    .filter(c -> c.getLinha() == linha && c.getColuna() == coluna)
-                    .findFirst()
-                    .ifPresent(c -> c.abrir());
-        } catch (Exception e){
-            // FIXME Ajusta a implementação do método abrir
-            campos.forEach(c -> c.setAberto(true));
-            throw e;
-        }
+        campos.parallelStream()
+                .filter(c -> c.getLinha() == linha && c.getColuna() == coluna)
+                .findFirst()
+                .ifPresent(c -> c.abrir());
+    }
+
+    private void mostrarMinas(){
+        this.campos.stream()
+                .filter(c -> c.isMinado())
+                .forEach(c -> c.setAberto(true));
     }
 
     public void altenarMarcacao(int linha, int coluna){
@@ -67,6 +79,8 @@ public class Tabuleiro {
     private void gerarCampos() {
         for(int linha = 0; linha < linhas; linha++){
             for (int coluna = 0; coluna < colunas; coluna++){
+                Campo campo = new Campo(linha, coluna);
+                campo.registrarObservador(this);
                 this.campos.add(new Campo(linha, coluna));
             }
         }
@@ -80,5 +94,14 @@ public class Tabuleiro {
         this.campos.stream().forEach(c -> c.reiniciar());
         this.sortearMinas();
     }
-    
+
+    @Override
+    public void eventoOcorreu(Campo campo, CampoEvento evento) {
+        if (evento == CampoEvento.EXPLODIR) {
+            this.mostrarMinas();
+            this.notificarObservadores(false);
+        } else if (this.objetivoAlcancado()) {
+            this.notificarObservadores(true);
+        }
+    }
 }
