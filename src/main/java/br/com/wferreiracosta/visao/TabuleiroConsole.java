@@ -53,7 +53,7 @@ public class TabuleiroConsole {
                 if("1".equals(digitado)){
                     tabuleiro.abrir(xy.next(), xy.next());
                 } else if ("2".equals(digitado)){
-                    tabuleiro.altenarMarcacao(xy.next(), xy.next());
+                    tabuleiro.alternarMarcacao(xy.next(), xy.next());
                 }
             }
             System.out.println("Você ganhou!");
